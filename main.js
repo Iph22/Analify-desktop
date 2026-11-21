@@ -167,10 +167,30 @@ ipcMain.on("tray", (_e, data) => {
   };
   updateTray();
 });
+/** Windows: a red dot drawn over the taskbar icon (Windows has no number badges for desktop apps). */
+let dot = null;
+function badgeDot() {
+  if (dot) return dot;
+  const size = 16, buf = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.hypot(x - 7.5, y - 7.5), i = (y * size + x) * 4;
+      const a = d <= 6.5 ? 255 : d <= 7.5 ? Math.round(255 * (7.5 - d)) : 0;  // soft edge
+      const ring = d > 5.5 && d <= 7.5;  // a white ring so the dot stands out on any icon
+      buf[i] = ring ? 255 : 48; buf[i + 1] = ring ? 255 : 59; buf[i + 2] = ring ? 255 : 255; buf[i + 3] = a;  // BGRA
+    }
+  }
+  dot = nativeImage.createFromBitmap(buf, { width: size, height: size });
+  return dot;
+}
+
 ipcMain.on("badge", (_e, count) => {
   const n = Math.max(0, Math.min(999, Number(count) || 0));
   if (isMac || process.platform === "linux") app.setBadgeCount(n);
-  else if (win && n > 0 && !win.isFocused()) win.flashFrame(true);  // Windows: the taskbar button flashes
+  else if (win) {
+    win.setOverlayIcon(n > 0 ? badgeDot() : null, n > 0 ? `${n} unread alert${n === 1 ? "" : "s"}` : "");
+    if (n > 0 && !win.isFocused()) win.flashFrame(true);
+  }
 });
 ipcMain.on("theme", (_e, dark) => {
   if (!isMac && win) {
