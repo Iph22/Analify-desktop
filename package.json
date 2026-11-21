@@ -1,7 +1,7 @@
 {
   "name": "analify-desktop",
   "productName": "Analify",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Analify for Windows and Mac (beta): privacy-first software analytics in its own window.",
   "homepage": "https://analify.dev",
   "author": "Analify",

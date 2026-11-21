@@ -5,7 +5,7 @@
 //
 // Because the dashboard itself is loaded live from analify.dev, every dashboard feature and fix reaches the app the
 // moment it's deployed. Only changes to this file (the window, tray, menus) need a new version of the app.
-const { app, BrowserWindow, Menu, Notification, Tray, nativeImage, nativeTheme, shell, ipcMain, net } = require("electron");
+const { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, nativeTheme, shell, ipcMain, net } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -13,6 +13,8 @@ const HOME = process.env.ANALIFY_URL || "https://analify.dev/";
 const ORIGIN = new URL(HOME).origin;
 const RELEASES_API = "https://api.github.com/repos/Iph22/Analify-desktop/releases/latest";
 const DOWNLOAD_PAGE = "https://analify.dev/download";
+// The Mac download for this Mac's processor (Apple silicon or Intel), always the newest release.
+const MAC_DOWNLOAD = `https://github.com/Iph22/Analify-desktop/releases/latest/download/Analify-mac-${process.arch === "arm64" ? "arm64" : "x64"}.dmg`;
 const isMac = process.platform === "darwin";
 
 if (!app.requestSingleInstanceLock()) {
@@ -148,7 +150,8 @@ function updateTray() {
     { label: "Open Analify", click: () => showWindow() },
     { label: "Start Analify when I log in", type: "checkbox", checked: login,
       click: (item) => { app.setLoginItemSettings({ openAtLogin: item.checked, args: ["--hidden"] }); updateTray(); } },
-    ...(newVersion ? [{ label: `Download Analify ${newVersion}`, click: () => shell.openExternal(DOWNLOAD_PAGE) }] : []),
+    ...(newVersion ? [{ label: `Download Analify ${newVersion}`, click: () => shell.openExternal(isMac ? MAC_DOWNLOAD : DOWNLOAD_PAGE) }] : []),
+    { label: "Check for updates…", click: () => checkForUpdates(true) },
     { type: "separator" },
     { label: "Quit Analify", click: () => { quitting = true; app.quit(); } },
   ];
@@ -183,31 +186,46 @@ function newer(a, b) {
   return false;
 }
 
-async function checkForUpdates() {
+async function checkForUpdates(manual = false) {
   try {
     if (!isMac && app.isPackaged) {
       // Windows: downloads quietly and installs the next time Analify restarts.
       const { autoUpdater } = require("electron-updater");
       autoUpdater.autoInstallOnAppQuit = true;
-      await autoUpdater.checkForUpdatesAndNotify({
+      const result = await autoUpdater.checkForUpdatesAndNotify({
         title: "Analify update ready", body: "The new version installs the next time Analify restarts.",
       });
+      const found = result && result.updateInfo && newer(result.updateInfo.version, app.getVersion());
+      if (manual) {
+        dialog.showMessageBox({ type: "info", message: found ? `Analify ${result.updateInfo.version} is downloading` : "You're up to date",
+          detail: found ? "It installs the next time Analify restarts." : `Analify ${app.getVersion()} is the newest version.` });
+      }
       return;
     }
     // Mac (automatic updates need a signed app): tell the person, and link to the download.
     const res = await net.fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
     const latest = String((await res.json()).tag_name || "").replace(/^v/, "");
-    if (latest && newer(latest, app.getVersion()) && newVersion !== latest) {
+    const found = latest && newer(latest, app.getVersion());
+    if (found && (newVersion !== latest || manual)) {
       newVersion = latest;
       updateTray();
-      if (Notification.isSupported()) {
+      const install = "Open the download, drag Analify to Applications and replace the old one, then open it (the first time: System Settings → Privacy & Security → Open Anyway). Your sign-in and settings stay as they are.";
+      if (manual) {
+        const { response } = await dialog.showMessageBox({ type: "info", message: `Analify ${latest} is available`, detail: install,
+          buttons: ["Download", "Later"], defaultId: 0, cancelId: 1 });
+        if (response === 0) shell.openExternal(MAC_DOWNLOAD);
+      } else if (Notification.isSupported()) {
         const n = new Notification({ title: `Analify ${latest} is available`, body: "Click to download it. Your sign-in and settings stay as they are." });
-        n.on("click", () => shell.openExternal(DOWNLOAD_PAGE));
+        n.on("click", () => shell.openExternal(MAC_DOWNLOAD));
         n.show();
       }
+    } else if (manual) {
+      dialog.showMessageBox({ type: "info", message: "You're up to date", detail: `Analify ${app.getVersion()} is the newest version.` });
     }
-  } catch { /* offline: check again later */ }
+  } catch (e) {
+    if (manual) dialog.showMessageBox({ type: "warning", message: "Couldn't check for updates", detail: "Check your internet connection and try again." });
+  }
 }
 
 // ---- menus ----
@@ -233,7 +251,7 @@ function buildMenu() {
       submenu: [
         { label: "Documentation", click: () => shell.openExternal(`${ORIGIN}/docs`) },
         { label: "Send feedback", click: () => shell.openExternal(`${ORIGIN}/contact`) },
-        { label: "Check for updates", click: () => checkForUpdates() },
+        { label: "Check for updates…", click: () => checkForUpdates(true) },
         { type: "separator" },
         { label: `Analify ${app.getVersion()} (beta)`, enabled: false },
       ],
