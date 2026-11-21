@@ -1,7 +1,7 @@
 {
   "name": "analify-desktop",
   "productName": "Analify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Analify for Windows and Mac (beta): privacy-first software analytics in its own window.",
   "homepage": "https://analify.dev",
   "author": "Analify",
@@ -25,7 +25,9 @@
     },
     "files": [
       "main.js",
-      "package.json"
+      "preload.js",
+      "package.json",
+      "assets/**"
     ],
     "win": {
       "target": [
@@ -39,23 +41,67 @@
       "artifactName": "Analify-Setup.${ext}"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "shortcutName": "Analify"
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Analify",
+      "runAfterFinish": true,
+      "license": "LICENSE",
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
       "target": [
         "dmg"
       ],
       "category": "public.app-category.business",
-      "identity": "-",
+      "identity": null,
       "artifactName": "Analify-mac-${arch}.${ext}"
     },
     "dmg": {
-      "title": "Analify"
-    }
+      "title": "Analify",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 190,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "afterPack": "./scripts/adhoc-sign.js",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Iph22",
+        "repo": "Analify-desktop",
+        "releaseType": "release"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "Analify",
+        "schemes": [
+          "analify"
+        ]
+      }
+    ]
   },
   "allowScripts": {
     "electron@33.2.1": true
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   }
 }

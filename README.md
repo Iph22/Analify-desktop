@@ -17,9 +17,21 @@ This is a beta and isn't code-signed yet:
 
 ## What it does
 
-- Opens analify.dev in its own window and keeps you signed in. Sign in with the code Analify emails you.
-- Links to other websites open in your browser.
-- Remembers its size and position, and opens only once (opening it again brings the window forward).
+- Your dashboard in a native window: on Mac the title bar blends in with the traffic lights; on Windows the window buttons sit over Analify's own colours.
+- A menu bar / tray icon with how many people are on your sites right now, and a quick menu to open any website.
+- Closing the window keeps Analify running there, so alerts arrive as native notifications. Unread alerts show on the Dock icon (Mac) or flash the taskbar button (Windows).
+- Ctrl/⌘+K quick switcher, Ctrl/⌘+1–9 to jump between websites, and it reopens the website you were last on.
+- Sign in with your email or with Google (Google finishes in your browser and hands you back to the app).
+- Optionally starts when you log in.
+
+## Updates
+
+- Everything on the dashboard updates the moment Analify ships it: the app loads it live from analify.dev.
+- The app itself: **Windows** downloads new versions quietly and installs them the next time Analify restarts. **Mac** shows a notification when a new version is ready (automatic updates on Mac need an Apple-signed app, coming later).
+
+## "Analify is damaged and can't be opened" (version 0.1.0 on Mac)
+
+0.1.0's Mac build wasn't signed at all, which macOS reports as damaged. 0.2.0 fixes this. To open 0.1.0 anyway, drag it to Applications and run `xattr -cr /Applications/Analify.app` in Terminal.
 
 ## Build it yourself
 
