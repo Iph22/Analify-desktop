@@ -18,7 +18,7 @@
   "build": {
     "appId": "dev.analify.desktop",
     "productName": "Analify",
-    "copyright": "Copyright © 2026 Analify",
+    "copyright": "Copyright \u00a9 2026 Analify",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -45,13 +45,7 @@
     },
     "mac": {
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg"
       ],
       "category": "public.app-category.business",
       "identity": "-",
