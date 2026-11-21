@@ -284,8 +284,22 @@ app.on("second-instance", (_event, argv) => {  // Windows: the link arrives as a
 });
 app.on("before-quit", () => { quitting = true; });
 
+/** The first launch after an update says so, in a plain window (notifications may be turned off). */
+function announceUpdate() {
+  const saved = settings();
+  const before = saved.version;
+  // 0.2.1 and earlier didn't note their version, but did save the window's size: that means an earlier install.
+  const earlier = before ? before !== app.getVersion() : saved.width !== undefined;
+  saveSettings({ version: app.getVersion() });
+  if (earlier) {
+    dialog.showMessageBox({ type: "info", message: `Analify was updated to ${app.getVersion()}`,
+      detail: `${before ? `You were on ${before}. ` : ""}Your sign-in and settings are as you left them.` });
+  }
+}
+
 app.whenReady().then(() => {
   if (process.platform === "win32") app.setAppUserModelId("dev.analify.desktop");  // notifications show "Analify"
+  announceUpdate();
   buildMenu();
   createWindow();
   createTray();
