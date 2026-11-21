@@ -1,0 +1,67 @@
+{
+  "name": "analify-desktop",
+  "productName": "Analify",
+  "version": "0.1.0",
+  "description": "Analify for Windows and Mac (beta): privacy-first software analytics in its own window.",
+  "homepage": "https://analify.dev",
+  "author": "Analify",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "dev.analify.desktop",
+    "productName": "Analify",
+    "copyright": "Copyright © 2026 Analify",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Analify-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Analify"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.business",
+      "identity": "-",
+      "artifactName": "Analify-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Analify"
+    }
+  },
+  "allowScripts": {
+    "electron@33.2.1": true
+  }
+}
