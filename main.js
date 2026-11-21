@@ -206,12 +206,29 @@ function newer(a, b) {
   return false;
 }
 
+const askedToRestart = { listening: false, version: null };
+
 async function checkForUpdates(manual = false) {
   try {
     if (!isMac && app.isPackaged) {
       // Windows: downloads quietly and installs the next time Analify restarts.
       const { autoUpdater } = require("electron-updater");
       autoUpdater.autoInstallOnAppQuit = true;
+      // Closing the window keeps Analify in the tray, so "install when it quits" could wait for days: once the
+      // update is downloaded, ask to restart now.
+      if (!askedToRestart.listening) {
+        askedToRestart.listening = true;
+        autoUpdater.on("update-downloaded", async (info) => {
+          if (askedToRestart.version === info.version) return;
+          askedToRestart.version = info.version;
+          const { response } = await dialog.showMessageBox({
+            type: "info", message: `Analify ${info.version} is ready`,
+            detail: "Restart Analify to finish updating. It takes a few seconds, and you stay signed in.",
+            buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1,
+          });
+          if (response === 0) { quitting = true; autoUpdater.quitAndInstall(false, true); }
+        });
+      }
       const result = await autoUpdater.checkForUpdatesAndNotify({
         title: "Analify update ready", body: "The new version installs the next time Analify restarts.",
       });
