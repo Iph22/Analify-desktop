@@ -165,6 +165,7 @@ function updateTray() {
     ...(newVersion ? [{ label: `Download Analify ${newVersion}`, click: () => shell.openExternal(isMac ? MAC_DOWNLOAD : DOWNLOAD_PAGE) }] : []),
     { label: "Check for updates…", click: () => checkForUpdates(true) },
     { type: "separator" },
+    { label: `Analify ${app.getVersion()} (beta)`, enabled: false },
     { label: "Quit Analify", click: () => { quitting = true; app.quit(); } },
   ];
   tray.setContextMenu(Menu.buildFromTemplate(template));
@@ -306,6 +307,7 @@ function buildMenu() {
     { role: "windowMenu" },
     {
       role: "help",
+      label: "Help",  // Windows and Linux don't name the "help" role by themselves, which left it invisible
       submenu: [
         { label: "Documentation", click: () => shell.openExternal(`${ORIGIN}/docs`) },
         { label: "Send feedback", click: () => shell.openExternal(`${ORIGIN}/contact`) },
