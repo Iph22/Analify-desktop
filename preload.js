@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld("analifyDesktop", {
   setTray: (data) => ipcRenderer.send("tray", data),
   setTheme: (dark) => ipcRenderer.send("theme", !!dark),
   focus: () => ipcRenderer.send("focus"),
+  checkForUpdates: () => ipcRenderer.send("check-updates"),
   onNavigate: (go) => ipcRenderer.on("navigate", (_event, path) => go(String(path))),
 });

@@ -211,6 +211,7 @@ ipcMain.on("theme", (_e, dark) => {
   }
 });
 ipcMain.on("focus", () => showWindow());
+ipcMain.on("check-updates", () => checkForUpdates(true));  // the dashboard's Help button (Windows has no menu bar)
 
 // ---- updates ----
 function newer(a, b) {
