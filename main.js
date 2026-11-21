@@ -35,6 +35,8 @@ let quitting = false;
 let trayData = { total: 0, sites: [] };
 let newVersion = null;
 let toldAboutTray = false;
+let pendingAnnouncement = null;  // "updated to ..." waits until the window is on screen
+let readyVersion = null;  // a downloaded update waiting for a restart (also offered in the tray menu)
 
 // ---- settings kept between launches ----
 const SETTINGS_FILE = () => path.join(app.getPath("userData"), "settings.json");
@@ -92,7 +94,14 @@ function createWindow() {
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(offlinePage(url))}`);
   });
 
-  win.once("ready-to-show", () => { if (!process.argv.includes("--hidden")) win.show(); });
+  win.once("ready-to-show", () => {
+    if (!process.argv.includes("--hidden")) win.show();
+    if (pendingAnnouncement) {
+      const message = pendingAnnouncement;
+      pendingAnnouncement = null;
+      setTimeout(() => showOnWindow(message), 800);
+    }
+  });
   win.on("close", (event) => {
     saveSettings({ ...win.getNormalBounds(), maximized: win.isMaximized() });
     // Closing the window keeps Analify running in the menu bar / tray, so alerts still arrive.
@@ -150,6 +159,9 @@ function updateTray() {
     { label: "Open Analify", click: () => showWindow() },
     { label: "Start Analify when I log in", type: "checkbox", checked: login,
       click: (item) => { app.setLoginItemSettings({ openAtLogin: item.checked, args: ["--hidden"] }); updateTray(); } },
+    ...(readyVersion ? [{ label: `Restart to update to ${readyVersion}`, click: () => {
+      quitting = true; require("electron-updater").autoUpdater.quitAndInstall(false, true);
+    } }] : []),
     ...(newVersion ? [{ label: `Download Analify ${newVersion}`, click: () => shell.openExternal(isMac ? MAC_DOWNLOAD : DOWNLOAD_PAGE) }] : []),
     { label: "Check for updates…", click: () => checkForUpdates(true) },
     { type: "separator" },
@@ -221,12 +233,21 @@ async function checkForUpdates(manual = false) {
         autoUpdater.on("update-downloaded", async (info) => {
           if (askedToRestart.version === info.version) return;
           askedToRestart.version = info.version;
-          const { response } = await dialog.showMessageBox({
-            type: "info", message: `Analify ${info.version} is ready`,
-            detail: "Restart Analify to finish updating. It takes a few seconds, and you stay signed in.",
-            buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1,
-          });
-          if (response === 0) { quitting = true; autoUpdater.quitAndInstall(false, true); }
+          readyVersion = info.version;
+          updateTray();  // "Restart to update" in the tray menu, whatever happens next
+          const restart = () => { quitting = true; autoUpdater.quitAndInstall(false, true); };
+          if (win && !win.isDestroyed() && win.isVisible()) {
+            const { response } = await showOnWindow({
+              type: "info", message: `Analify ${info.version} is ready`,
+              detail: "Restart Analify to finish updating. It takes a few seconds, and you stay signed in.",
+              buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1,
+            });
+            if (response === 0) restart();
+          } else if (Notification.isSupported()) {  // the window is closed to the tray
+            const n = new Notification({ title: `Analify ${info.version} is ready`, body: "Click to restart Analify and finish updating." });
+            n.on("click", restart);
+            n.show();
+          }
         });
       }
       const result = await autoUpdater.checkForUpdatesAndNotify({
@@ -234,7 +255,7 @@ async function checkForUpdates(manual = false) {
       });
       const found = result && result.updateInfo && newer(result.updateInfo.version, app.getVersion());
       if (manual) {
-        dialog.showMessageBox({ type: "info", message: found ? `Analify ${result.updateInfo.version} is downloading` : "You're up to date",
+        showOnWindow({ type: "info", message: found ? `Analify ${result.updateInfo.version} is downloading` : "You're up to date",
           detail: found ? "It installs the next time Analify restarts." : `Analify ${app.getVersion()} is the newest version.` });
       }
       return;
@@ -249,7 +270,7 @@ async function checkForUpdates(manual = false) {
       updateTray();
       const install = "Open the download, drag Analify to Applications and replace the old one, then open it (the first time: System Settings → Privacy & Security → Open Anyway). Your sign-in and settings stay as they are.";
       if (manual) {
-        const { response } = await dialog.showMessageBox({ type: "info", message: `Analify ${latest} is available`, detail: install,
+        const { response } = await showOnWindow({ type: "info", message: `Analify ${latest} is available`, detail: install,
           buttons: ["Download", "Later"], defaultId: 0, cancelId: 1 });
         if (response === 0) shell.openExternal(MAC_DOWNLOAD);
       } else if (Notification.isSupported()) {
@@ -258,10 +279,10 @@ async function checkForUpdates(manual = false) {
         n.show();
       }
     } else if (manual) {
-      dialog.showMessageBox({ type: "info", message: "You're up to date", detail: `Analify ${app.getVersion()} is the newest version.` });
+      showOnWindow({ type: "info", message: "You're up to date", detail: `Analify ${app.getVersion()} is the newest version.` });
     }
   } catch (e) {
-    if (manual) dialog.showMessageBox({ type: "warning", message: "Couldn't check for updates", detail: "Check your internet connection and try again." });
+    if (manual) showOnWindow({ type: "warning", message: "Couldn't check for updates", detail: "Check your internet connection and try again." });
   }
 }
 
@@ -329,9 +350,18 @@ function announceUpdate() {
   const earlier = before ? before !== app.getVersion() : saved.width !== undefined;
   saveSettings({ version: app.getVersion() });
   if (earlier) {
-    dialog.showMessageBox({ type: "info", message: `Analify was updated to ${app.getVersion()}`,
-      detail: `${before ? `You were on ${before}. ` : ""}Your sign-in and settings are as you left them.` });
+    pendingAnnouncement = { type: "info", message: `Analify was updated to ${app.getVersion()}`,
+      detail: `${before ? `You were on ${before}. ` : ""}Your sign-in and settings are as you left them.` };
   }
+}
+
+/** A message attached to Analify's window, so Windows shows it in front instead of behind other windows. */
+function showOnWindow(options) {
+  if (win && !win.isDestroyed() && win.isVisible()) {
+    win.focus();
+    return dialog.showMessageBox(win, options);
+  }
+  return dialog.showMessageBox(options);
 }
 
 app.whenReady().then(() => {
