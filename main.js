@@ -86,9 +86,17 @@ function createWindow() {
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: "deny" };
   });
-  win.webContents.on("will-navigate", (event, url) => {
-    if (!isAnalify(url)) { event.preventDefault(); shell.openExternal(url); }
-  });
+  // Only analify.dev runs in this window. Anything else (a link, or a redirect partway through loading)
+  // opens in the browser instead.
+  const keepOut = (event, url) => {
+    const to = event.url || url;
+    if (!isAnalify(to)) {
+      event.preventDefault();
+      if (/^https?:/.test(to)) shell.openExternal(to);
+    }
+  };
+  win.webContents.on("will-navigate", keepOut);
+  win.webContents.on("will-redirect", keepOut);
   win.webContents.on("did-fail-load", (_e, code, _desc, url, isMainFrame) => {
     if (!isMainFrame || code === -3) return;
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(offlinePage(url))}`);

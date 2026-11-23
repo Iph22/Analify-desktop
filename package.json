@@ -1,7 +1,7 @@
 {
   "name": "analify-desktop",
   "productName": "Analify",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Analify for Windows and Mac (beta): privacy-first software analytics in its own window.",
   "homepage": "https://analify.dev",
   "author": "Analify",
@@ -12,13 +12,13 @@
     "dist": "electron-builder --publish never"
   },
   "devDependencies": {
-    "electron": "33.2.1",
+    "electron": "45.4.1",
     "electron-builder": "25.1.8"
   },
   "build": {
     "appId": "dev.analify.desktop",
     "productName": "Analify",
-    "copyright": "Copyright \u00a9 2026 Analify",
+    "copyright": "Copyright © 2026 Analify",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -102,6 +102,6 @@
     "electron@33.2.1": true
   },
   "dependencies": {
-    "electron-updater": "6.3.9"
+    "electron-updater": "6.8.11"
   }
 }
